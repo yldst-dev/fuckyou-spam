@@ -8,12 +8,13 @@ services:
     env_file:
       - .env
     volumes:
-      - ./logs:/app/logs
-      - ./data:/app/data
-    # 볼륨 마운트 권한 문제 해결을 위한 사용자 설정
-    user: "1001:1001"
+      - ./logs:/app/logs:Z
+      - ./data:/app/data:Z
+    # Rocky Linux 호환 사용자 설정 - 현재 사용자의 UID/GID 사용
+    user: "${UID:-1000}:${GID:-1000}"
     environment:
       - NODE_ENV=production
+      - TZ=Asia/Seoul
     healthcheck:
       test: ["CMD", "node", "-e", "console.log('Health check')"]
       interval: 30s
@@ -25,6 +26,9 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    # 특권 모드와 보안 옵션 추가 (Rocky Linux SELinux 대응)
+    security_opt:
+      - label:type:container_runtime_t
 
 volumes:
   logs:
