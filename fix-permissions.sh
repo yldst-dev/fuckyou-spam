@@ -9,8 +9,8 @@ echo "UID: $(id -u)"
 echo "GID: $(id -g)"
 echo "그룹: $(groups)"
 
-# 프로젝트 디렉터리로 이동
-cd /Users/sumin/Documents/%EC%BD%94%EB%94%A9%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/fuckyou-spam
+# 프로젝트 디렉터리로 이동 (현재 디렉터리 사용)
+# cd /Users/sumin/Documents/%EC%BD%94%EB%94%A9%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/fuckyou-spam
 
 # 필요한 디렉터리 생성
 echo "📁 필요한 디렉터리 생성..."
