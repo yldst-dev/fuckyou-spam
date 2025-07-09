@@ -126,15 +126,53 @@ if (ADMIN_USER_ID && ADMIN_GROUP_ID) {
   });
 }
 
-// 데이터베이스 디렉토리 생성
+// 데이터 디렉토리 생성 및 권한 설정
 const dbDir = path.join(__dirname, 'data');
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
+try {
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true, mode: 0o755 });
+    logger.info('📁 데이터 디렉토리 생성 완료');
+  }
+} catch (error) {
+  logger.error('❌ 데이터 디렉토리 생성 실패', { error: error.message });
+  process.exit(1);
 }
 
 // SQLite 데이터베이스 초기화
 const dbPath = path.join(dbDir, 'whitelist.db');
-const db = new sqlite3.Database(dbPath);
+let db;
+try {
+  db = new sqlite3.Database(dbPath, (err) => {
+    if (err) {
+      logger.error('❌ SQLite 데이터베이스 연결 실패', { 
+        error: err.message,
+        dbPath: dbPath,
+        dbDir: dbDir,
+        errno: err.errno,
+        code: err.code
+      });
+      process.exit(1);
+    } else {
+      logger.info('✅ SQLite 데이터베이스 연결 성공', { dbPath: dbPath });
+    }
+  });
+  
+  // 데이터베이스 오류 핸들러
+  db.on('error', (err) => {
+    logger.error('❌ SQLite 데이터베이스 오류', { 
+      error: err.message,
+      errno: err.errno,
+      code: err.code
+    });
+  });
+} catch (error) {
+  logger.error('❌ SQLite 데이터베이스 초기화 실패', { 
+    error: error.message,
+    dbPath: dbPath,
+    dbDir: dbDir
+  });
+  process.exit(1);
+}
 
 // 데이터베이스 테이블 생성
 db.serialize(() => {

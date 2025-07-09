@@ -3,8 +3,8 @@ FROM node:18-alpine
 # 작업 디렉토리 설정
 WORKDIR /app
 
-# 로그 디렉토리 생성
-RUN mkdir -p logs
+# 로그 및 데이터 디렉토리 생성
+RUN mkdir -p logs data
 
 # package.json과 package-lock.json 복사 (있는 경우)
 COPY package*.json ./
@@ -18,7 +18,8 @@ COPY . .
 # 사용자 권한 설정
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 && \
-    chown -R nodejs:nodejs /app
+    chown -R nodejs:nodejs /app && \
+    chmod -R 755 /app/logs /app/data
 
 USER nodejs
 
