@@ -21,6 +21,9 @@ RUN addgroup -g 1001 -S nodejs && \
     chown -R nodejs:nodejs /app && \
     chmod -R 755 /app/logs /app/data
 
+# 볼륨 마운트 지점 생성 및 권한 설정
+VOLUME ["/app/logs", "/app/data"]
+
 USER nodejs
 
 # 포트 노출 (필요시)

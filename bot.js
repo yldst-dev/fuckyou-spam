@@ -131,45 +131,84 @@ const dbDir = path.join(__dirname, 'data');
 try {
   if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true, mode: 0o755 });
-    logger.info('📁 데이터 디렉토리 생성 완료');
+    logger.info('📁 데이터 디렉토리 생성 완료', { dbDir });
   }
+  
+  // 디렉토리 권한 확인
+  const stats = fs.statSync(dbDir);
+  if (!stats.isDirectory()) {
+    throw new Error('데이터 경로가 디렉토리가 아닙니다');
+  }
+  
+  // 쓰기 권한 테스트
+  const testFile = path.join(dbDir, '.write-test');
+  fs.writeFileSync(testFile, 'test');
+  fs.unlinkSync(testFile);
+  logger.info('✅ 데이터 디렉토리 쓰기 권한 확인 완료');
+  
 } catch (error) {
-  logger.error('❌ 데이터 디렉토리 생성 실패', { error: error.message });
+  logger.error('❌ 데이터 디렉토리 접근 실패', { 
+    error: error.message, 
+    dbDir: dbDir,
+    process: {
+      uid: process.getuid ? process.getuid() : 'unknown',
+      gid: process.getgid ? process.getgid() : 'unknown',
+      cwd: process.cwd()
+    }
+  });
   process.exit(1);
 }
 
 // SQLite 데이터베이스 초기화
 const dbPath = path.join(dbDir, 'whitelist.db');
+logger.info('🔄 SQLite 데이터베이스 초기화 시작', { dbPath });
+
 let db;
 try {
-  db = new sqlite3.Database(dbPath, (err) => {
+  db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
     if (err) {
       logger.error('❌ SQLite 데이터베이스 연결 실패', { 
         error: err.message,
         dbPath: dbPath,
         dbDir: dbDir,
         errno: err.errno,
-        code: err.code
+        code: err.code,
+        stack: err.stack
       });
       process.exit(1);
     } else {
-      logger.info('✅ SQLite 데이터베이스 연결 성공', { dbPath: dbPath });
+      logger.info('✅ SQLite 데이터베이스 연결 성공', { 
+        dbPath: dbPath,
+        mode: 'READWRITE|CREATE'
+      });
     }
   });
   
   // 데이터베이스 오류 핸들러
   db.on('error', (err) => {
-    logger.error('❌ SQLite 데이터베이스 오류', { 
+    logger.error('❌ SQLite 데이터베이스 런타임 오류', { 
       error: err.message,
       errno: err.errno,
-      code: err.code
+      code: err.code,
+      stack: err.stack
     });
   });
+  
+  // 데이터베이스 연결 확인
+  db.on('open', () => {
+    logger.info('🔓 SQLite 데이터베이스 열림');
+  });
+  
+  db.on('close', () => {
+    logger.info('🔒 SQLite 데이터베이스 닫힘');
+  });
+  
 } catch (error) {
   logger.error('❌ SQLite 데이터베이스 초기화 실패', { 
     error: error.message,
     dbPath: dbPath,
-    dbDir: dbDir
+    dbDir: dbDir,
+    stack: error.stack
   });
   process.exit(1);
 }
