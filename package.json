@@ -18,7 +18,8 @@
     "@mozilla/readability": "^0.4.4",
     "jsdom": "^23.0.1",
     "axios": "^1.6.2",
-    "sqlite3": "^5.1.6"
+    "sqlite3": "^5.1.6",
+    "node-cron": "^3.0.3"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

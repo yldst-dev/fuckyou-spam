@@ -8,6 +8,7 @@ const axios = require('axios');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const cron = require('node-cron');
 
 // 한국시간 포매터
 const koreanTimeFormat = winston.format.timestamp({
@@ -314,7 +315,8 @@ const generalCommands = [
   { command: 'start', description: '봇 소개 및 시작' },
   { command: 'help', description: '도움말' },
   { command: 'status', description: '봇 상태 확인' },
-  { command: 'chatid', description: '현재 그룹 ID 확인' }
+  { command: 'chatid', description: '현재 그룹 ID 확인' },
+  { command: 'ping', description: '응답 속도 측정' }
 ];
 
 const adminCommands = [
@@ -322,6 +324,7 @@ const adminCommands = [
   { command: 'help', description: '도움말' },
   { command: 'status', description: '봇 상태 확인' },
   { command: 'chatid', description: '현재 그룹 ID 확인' },
+  { command: 'ping', description: '응답 속도 측정' },
   { command: 'whitelist_add', description: '그룹을 화이트리스트에 추가' },
   { command: 'whitelist_remove', description: '그룹을 화이트리스트에서 제거' },
   { command: 'whitelist_list', description: '화이트리스트 목록 확인' },
@@ -489,13 +492,28 @@ setTimeout(async () => {
         });
         
         const stats = await getWhitelistStats();
-        const adminStartMessage = `🚀 **스팸 감지 봇 시작**
+        const nodeVersion = process.version;
+        const uptime = process.uptime();
+        
+        const adminStartMessage = `🚀 **스팸 감지 봇 시작 완료**
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⏰ **시작 시간:** ${startTime}
-🏠 **화이트리스트 그룹 수:** ${stats.length}개
-🤖 **상태:** 정상 작동 중
+🏠 **활성 그룹:** ${stats.length}개 화이트리스트
+🤖 **시스템 정보:**
+   └ Node.js ${nodeVersion}
+   └ 가동 시간: ${Math.floor(uptime)}초
 
-봇이 성공적으로 시작되었습니다.`;
+📋 **활성화된 기능:**
+   ✅ AI 스팸 감지 (Cerebras Llama-4-Scout)
+   ✅ 우선순위 기반 큐 처리
+   ✅ 웹페이지 내용 분석
+   ✅ 자동 재부팅 (00:00, 12:00 KST)
+   ✅ 실시간 로그 모니터링
+
+🔄 **자동 재부팅:** 매일 자정/정오 (한국시간)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🟢 **상태: 정상 작동 중**`;
 
         await bot.sendMessage(ADMIN_GROUP_ID, adminStartMessage, { parse_mode: 'Markdown' });
         logger.info('✅ 관리자 그룹 시작 알림 전송 완료', { adminGroupId: ADMIN_GROUP_ID });
@@ -939,33 +957,30 @@ async function deleteSpamMessage(msg) {
     
     // 필터링된 그룹에는 알림을 보내지 않음 (조용히 삭제)
     
-    // 관리자 그룹에 상세한 스팸 삭제 알림 전송
-    const adminMessage = `🚨 **스팸 메시지 삭제 알림**
+    // 관리자 그룹에 상세한 스팸 삭제 알림 전송 (개선된 포맷)
+    const statusIcon = memberStatus === '그룹 멤버' ? '✅' : '⚠️';
+    const priorityIcon = priority >= 20 ? '🔴' : priority >= 10 ? '🟡' : '🟢';
+    const urlIcon = extractUrlsFromText(text).length > 0 ? '🔗' : '📝';
+    const telegramLinkIcon = hasTelegramGroupLink(text) ? '📢' : '';
+    
+    const adminMessage = `🗑️ **스팸 메시지 자동 삭제**
 
-🏠 **그룹 정보:**
-• 그룹명: ${msg.chat.title}
-• 그룹 ID: \`${msg.chat.id}\`
-• 그룹 타입: ${msg.chat.type}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏠 **그룹:** ${msg.chat.title}
+   └ ID: \`${msg.chat.id}\` | 타입: ${msg.chat.type}
 
-👤 **사용자 정보:**
-• 이름: ${msg.from.first_name}${msg.from.last_name ? ' ' + msg.from.last_name : ''}
-• 사용자명: ${msg.from.username ? '@' + msg.from.username : '없음'}
-• 사용자 ID: \`${msg.from.id}\`
-• 멤버 상태: ${memberStatus}
-• 언어: ${msg.from.language_code || '미설정'}
+👤 **사용자:** ${msg.from.first_name}${msg.from.last_name ? ' ' + msg.from.last_name : ''}
+   └ ${msg.from.username ? '@' + msg.from.username : 'ID: ' + msg.from.id} | ${statusIcon} ${memberStatus}
 
-📝 **메시지 정보:**
-• 메시지 ID: ${msg.message_id}
-• 우선순위: ${priority}
-• URL 포함: ${extractUrlsFromText(text).length > 0 ? '예' : '아니오'}
-• 텔레그램 링크: ${hasTelegramGroupLink(text) ? '예' : '아니오'}
-• 내용: \`${text.substring(0, 200)}${text.length > 200 ? '...' : ''}\`
+${urlIcon} **메시지:** ${telegramLinkIcon}
+   \`${text.substring(0, 150)}${text.length > 150 ? '...' : ''}\`
+   
+${priorityIcon} **분석:** 우선순위 ${priority} | 메시지 ID: ${msg.message_id}
+   ${extractUrlsFromText(text).length > 0 ? `🔗 URL ${extractUrlsFromText(text).length}개` : '📝 일반 텍스트'}${hasTelegramGroupLink(text) ? ' | 📢 텔레그램 링크' : ''}
 
-⏰ **시각 정보:**
-• 전송 시각: ${originalSentTime}
-• 삭제 시각: ${deletedTime}
-
-⚡ 이 메시지는 AI에 의해 스팸으로 분류되어 자동 삭제되었습니다.`;
+⏰ **시각:** ${originalSentTime} → ${deletedTime}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚡ AI 자동 분류 및 삭제 완료`;
 
     // 관리자 그룹에 알림 전송 (설정된 경우에만)
     if (ADMIN_GROUP_ID) {
@@ -1040,6 +1055,45 @@ bot.onText(/\/chatid/, async (msg) => {
   const isAllowed = await isAllowedChat(chatId);
   
   bot.sendMessage(chatId, `📍 현재 그룹 정보:\n\n🆔 채팅 ID: \`${chatId}\`\n📝 그룹명: ${msg.chat.title || '개인 채팅'}\n${isAllowed ? '✅ 허용된 그룹' : '❌ 허용되지 않은 그룹'}`, { parse_mode: 'Markdown' });
+});
+
+// Ping 명령어 - 응답 속도 측정
+bot.onText(/\/ping/, async (msg) => {
+  const chatId = msg.chat.id;
+  const startTime = Date.now();
+  
+  try {
+    const sentMessage = await bot.sendMessage(chatId, '🏓 Ping 측정 중...');
+    const endTime = Date.now();
+    const responseTime = endTime - startTime;
+    
+    // 메시지 수정으로 최종 결과 표시
+    await bot.editMessageText(
+      `🏓 **Pong!**\n\n⚡ 응답 속도: **${responseTime}ms**\n📡 상태: ${responseTime < 100 ? '🟢 매우 빠름' : responseTime < 300 ? '🟡 보통' : '🔴 느림'}`,
+      {
+        chat_id: chatId,
+        message_id: sentMessage.message_id,
+        parse_mode: 'Markdown'
+      }
+    );
+    
+    logger.info(`🏓 Ping 명령어 실행`, {
+      user: msg.from.username || msg.from.first_name,
+      userId: msg.from.id,
+      chatId: chatId,
+      responseTime: responseTime
+    });
+    
+  } catch (error) {
+    logger.error(`❌ Ping 명령어 실행 실패`, {
+      error: error.message,
+      user: msg.from.username || msg.from.first_name,
+      userId: msg.from.id,
+      chatId: chatId
+    });
+    
+    bot.sendMessage(chatId, '❌ Ping 측정에 실패했습니다.');
+  }
 });
 
 // 화이트리스트 관리 명령어들 (관리자 전용)
@@ -1253,6 +1307,7 @@ bot.onText(/\/help/, async (msg) => {
   helpMessage += '/start - 봇 소개 및 시작\n';
   helpMessage += '/status - 봇 상태 확인\n';
   helpMessage += '/chatid - 현재 그룹 ID 확인\n';
+  helpMessage += '/ping - 응답 속도 측정\n';
   helpMessage += '/help - 도움말\n\n';
   
   if (isAdminGroup(chatId) && isAdmin(userId)) {
@@ -1324,4 +1379,90 @@ process.on('uncaughtException', (error) => {
   } else {
     process.exit(1);
   }
+});
+
+// 자동 재부팅 기능 (한국시간 기준)
+// 매일 자정(00:00)과 정오(12:00)에 재부팅
+cron.schedule('0 0 * * *', async () => {
+  const koreanTime = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+  
+  logger.info('🌙 자정 자동 재부팅 시작', { 
+    scheduledTime: '00:00 KST',
+    actualTime: koreanTime 
+  });
+  
+  // 관리자 그룹에 알림 전송
+  if (ADMIN_GROUP_ID) {
+    try {
+      await bot.sendMessage(ADMIN_GROUP_ID, 
+        `🌙 **자정 자동 재부팅**\n\n⏰ 시각: ${koreanTime}\n🔄 상태: 재부팅 시작\n💤 5초 후 프로세스가 종료됩니다.`, 
+        { parse_mode: 'Markdown' }
+      );
+    } catch (error) {
+      logger.error('❌ 재부팅 알림 전송 실패', { error: error.message });
+    }
+  }
+  
+  // 5초 후 정상 종료 (Docker/PM2가 자동으로 재시작함)
+  setTimeout(() => {
+    logger.info('🔄 자정 자동 재부팅을 위한 프로세스 종료');
+    
+    if (db) {
+      db.close((err) => {
+        if (err) {
+          logger.error('❌ 데이터베이스 연결 종료 실패', { error: err.message });
+        }
+        process.exit(0);
+      });
+    } else {
+      process.exit(0);
+    }
+  }, 5000);
+}, {
+  timezone: 'Asia/Seoul'
+});
+
+cron.schedule('0 12 * * *', async () => {
+  const koreanTime = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+  
+  logger.info('☀️ 정오 자동 재부팅 시작', { 
+    scheduledTime: '12:00 KST',
+    actualTime: koreanTime 
+  });
+  
+  // 관리자 그룹에 알림 전송
+  if (ADMIN_GROUP_ID) {
+    try {
+      await bot.sendMessage(ADMIN_GROUP_ID, 
+        `☀️ **정오 자동 재부팅**\n\n⏰ 시각: ${koreanTime}\n🔄 상태: 재부팅 시작\n💤 5초 후 프로세스가 종료됩니다.`, 
+        { parse_mode: 'Markdown' }
+      );
+    } catch (error) {
+      logger.error('❌ 재부팅 알림 전송 실패', { error: error.message });
+    }
+  }
+  
+  // 5초 후 정상 종료 (Docker/PM2가 자동으로 재시작함)
+  setTimeout(() => {
+    logger.info('🔄 정오 자동 재부팅을 위한 프로세스 종료');
+    
+    if (db) {
+      db.close((err) => {
+        if (err) {
+          logger.error('❌ 데이터베이스 연결 종료 실패', { error: err.message });
+        }
+        process.exit(0);
+      });
+    } else {
+      process.exit(0);
+    }
+  }, 5000);
+}, {
+  timezone: 'Asia/Seoul'
+});
+
+logger.info('⏰ 자동 재부팅 스케줄러 시작', {
+  midnightSchedule: '00:00 KST',
+  noonSchedule: '12:00 KST',
+  timezone: 'Asia/Seoul'
 }); 
