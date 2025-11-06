@@ -98,6 +98,7 @@ ALLOWED_CHAT_IDS=your_group_chat_id_1,your_group_chat_id_2
 |---------|------|--------|----------|
 | `TELEGRAM_BOT_TOKEN` | 텔레그램 봇 API 토큰 | - | 필수 |
 | `CEREBRAS_API_KEY` | Cerebras AI API 키 | - | 필수 |
+| `CEREBRAS_MODEL` | Cerebras AI 모델 이름 (예: llama-4-scout-17b-16e-instruct) | llama-4-scout-17b-16e-instruct | 선택 |
 | `BOT_USERNAME` | 봇의 사용자명 (@제외) | - | 필수 |
 | `ADMIN_USER_ID` | 관리자 텔레그램 사용자 ID | - | 선택 |
 | `ADMIN_GROUP_ID` | 관리자 그룹 ID | - | 선택 |
@@ -122,7 +123,7 @@ docker-compose logs -f
 docker-compose down
 ```
 
-### 방법 2: 직접 실행
+### 방법 3: 직접 실행
 
 ```bash
 # 의존성 설치
@@ -354,4 +355,4 @@ MIT License
 
 ## 🤝 기여
 
-버그 리포트나 기능 요청은 이슈를 통해 제출해 주세요. 
+버그 리포트나 기능 요청은 이슈를 통해 제출해 주세요.

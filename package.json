@@ -2,10 +2,12 @@
   "name": "telegram-spam-bot",
   "version": "1.0.0",
   "description": "Telegram bot that detects and deletes spam messages using LLM",
-  "main": "bot.js",
+  "main": "dist/index.js",
   "scripts": {
-    "start": "node bot.js",
-    "dev": "nodemon bot.js"
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev --respawn --transpileOnly src/index.ts",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": ["telegram", "bot", "spam", "detection", "llm"],
   "author": "",
@@ -22,9 +24,15 @@
     "node-cron": "^3.0.3"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "typescript": "^5.6.3",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "@types/node": "^20.12.12",
+    "@types/sqlite3": "^3.1.11",
+    "@types/jsdom": "^21.1.7",
+    "@types/node-cron": "^3.0.11"
   },
   "engines": {
     "node": ">=18.0.0"
   }
-} 
+}
