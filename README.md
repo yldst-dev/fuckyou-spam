@@ -4,7 +4,7 @@ Cerebras AI를 사용하여 텔레그램 그룹의 스팸 메시지를 자동으
 
 ## 🚀 주요 기능
 
-- **AI 기반 스팸 감지**: Cerebras AI (Llama-4-Scout) 모델을 사용하여 메시지 분류
+- **AI 기반 스팸 감지**: Cerebras AI (gpt-oss-120b) 모델을 사용하여 메시지 분류
 - **스마트 URL 분석**: Mozilla Readability를 사용하여 링크된 웹페이지의 실제 내용을 분석
 - **비멤버 우선 검열**: 그룹 멤버가 아닌 사용자의 메시지를 우선적으로 검사
 - **링크 기반 우선순위**: 텔레그램 그룹 링크나 URL이 포함된 메시지 우선 처리
@@ -24,25 +24,6 @@ cp .env.example .env
 ```
 
 2. `.env` 파일에 필요한 정보를 입력하세요:
-```env
-# 필수 설정
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
-CEREBRAS_API_KEY=your_cerebras_api_key_here
-BOT_USERNAME=your_bot_username
-
-# 관리자 설정 (선택사항)
-ADMIN_USER_ID=your_telegram_user_id_here
-ADMIN_GROUP_ID=your_admin_group_id_here
-
-# 선택적 설정
-LOG_LEVEL=info
-WEBPAGE_FETCH_TIMEOUT=10000
-MAX_URLS_PER_MESSAGE=2
-WEBPAGE_CONTENT_MAX_LENGTH=1000
-
-# 기존 환경변수 (마이그레이션 목적 - 선택사항)
-ALLOWED_CHAT_IDS=your_group_chat_id_1,your_group_chat_id_2
-```
 
 ### 2. 텔레그램 봇 생성
 
@@ -98,7 +79,7 @@ ALLOWED_CHAT_IDS=your_group_chat_id_1,your_group_chat_id_2
 |---------|------|--------|----------|
 | `TELEGRAM_BOT_TOKEN` | 텔레그램 봇 API 토큰 | - | 필수 |
 | `CEREBRAS_API_KEY` | Cerebras AI API 키 | - | 필수 |
-| `CEREBRAS_MODEL` | Cerebras AI 모델 이름 (예: llama-4-scout-17b-16e-instruct) | llama-4-scout-17b-16e-instruct | 선택 |
+| `CEREBRAS_MODEL` | Cerebras AI 모델 이름 (예: gpt-oss-120b) | gpt-oss-120b | 선택 |
 | `BOT_USERNAME` | 봇의 사용자명 (@제외) | - | 필수 |
 | `ADMIN_USER_ID` | 관리자 텔레그램 사용자 ID | - | 선택 |
 | `ADMIN_GROUP_ID` | 관리자 그룹 ID | - | 선택 |
