@@ -22,6 +22,15 @@ Examples:
 USAGE
 }
 
+function dc() {
+  # Wrapper for docker compose vs docker-compose
+  if docker compose version >/dev/null 2>&1; then
+    docker compose "$@"
+  else
+    docker-compose "$@"
+  fi
+}
+
 function ensure_env() {
   if [[ ! -f .env ]]; then
     echo "❌ .env 파일이 없습니다. .env.example을 참조하여 .env 파일을 생성하세요." >&2
@@ -73,11 +82,24 @@ function fix_permissions() {
 
 function compose_up() {
   echo "🏗️ 새로운 이미지 빌드 및 시작..."
-  UID=$(id -u) GID=$(id -g) docker-compose up --build -d
+  local uid gid compose_env
+  uid=$(id -u)
+  gid=$(id -g)
+  compose_env=".env.compose"
+  # Create a compose env file injecting UID/GID without touching shell readonly UID
+  grep -vE '^(UID|GID)=' .env > "$compose_env" || cp .env "$compose_env"
+  echo "UID=$uid" >> "$compose_env"
+  echo "GID=$gid" >> "$compose_env"
+  dc --env-file "$compose_env" up --build -d
   echo "📊 컨테이너 상태 확인..."
-  docker-compose ps
+  dc ps
   echo "📋 초기 로그 출력 (30초)..."
-  timeout 30 docker-compose logs -f || true
+  if docker compose version >/dev/null 2>&1; then
+    timeout 30 docker compose logs -f || true
+  else
+    timeout 30 docker-compose logs -f || true
+  fi
+  rm -f "$compose_env" || true
 }
 
 function prune() {
@@ -92,7 +114,7 @@ case "$cmd" in
     ensure_env
     ensure_dirs
     fix_permissions
-    docker-compose down --remove-orphans || true
+    dc down --remove-orphans || true
     prune
     compose_up
     ;;
@@ -101,16 +123,16 @@ case "$cmd" in
     fix_permissions
     ;;
   down)
-    docker-compose down
+    dc down
     ;;
   restart)
-    docker-compose restart
+    dc restart
     ;;
   logs)
-    docker-compose logs -f
+    dc logs -f
     ;;
   ps)
-    docker-compose ps
+    dc ps
     ;;
   *)
     usage
