@@ -2,6 +2,8 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+RUN npm i -g npm@11.6.2
+
 COPY package*.json ./
 RUN npm ci
 
@@ -16,6 +18,8 @@ WORKDIR /app
 
 # 로그 및 데이터 디렉토리
 RUN mkdir -p logs data
+
+RUN npm i -g npm@11.6.2
 
 COPY package*.json ./
 RUN npm ci --omit=dev
