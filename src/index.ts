@@ -96,7 +96,7 @@ setTimeout(async () => {
       const stats = await getWhitelistStats();
       const nodeVersion = process.version;
       const uptime = process.uptime();
-      const adminStartMessage = `🚀 **스팸 감지 봇 시작 완료**\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n⏰ **시작 시간:** ${startTime}\n🏠 **활성 그룹:** ${stats.length}개 화이트리스트\n🤖 **시스템 정보:**\n   └ Node.js ${nodeVersion}\n   └ 가동 시간: ${Math.floor(uptime)}초\n\n📋 **활성화된 기능:**\n   ✅ AI 스팸 감지 (Cerebras Llama-4-Scout)\n   ✅ 우선순위 기반 큐 처리\n   ✅ 웹페이지 내용 분석\n   ✅ 자동 재부팅 (00:00, 12:00 KST)\n   ✅ 실시간 로그 모니터링\n\n🔄 **자동 재부팅:** 매일 자정/정오 (한국시간)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🟢 **상태: 정상 작동 중**`;
+      const adminStartMessage = `🚀 **스팸 감지 봇 시작 완료**\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n⏰ **시작 시간:** ${startTime}\n🏠 **활성 그룹:** ${stats.length}개 화이트리스트\n🤖 **시스템 정보:**\n   └ Node.js ${nodeVersion}\n   └ 가동 시간: ${Math.floor(uptime)}초\n🧠 **현재 모델:** ${env.CEREBRAS_MODEL}\n\n📋 **활성화된 기능:**\n   ✅ AI 스팸 감지\n   ✅ 우선순위 기반 큐 처리\n   ✅ 웹페이지 내용 분석\n   ✅ 자동 재부팅 (00:00, 12:00 KST)\n   ✅ 실시간 로그 모니터링\n\n🔄 **자동 재부팅:** 매일 자정/정오 (한국시간)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🟢 **상태: 정상 작동 중**`;
       await bot.sendMessage(env.ADMIN_GROUP_ID, adminStartMessage, { parse_mode: 'Markdown' });
       logger.info('✅ 관리자 그룹 시작 알림 전송 완료', { adminGroupId: env.ADMIN_GROUP_ID, service: 'bot' });
     } catch (error: any) {
@@ -198,6 +198,22 @@ async function deleteSpamMessage(msg: MetaMsg) {
     const isMember = msg._metadata?.isGroupMember ?? true;
     const priority = msg._metadata?.priority ?? 1;
     const text = msg.text || msg.caption || '[미디어 메시지]';
+    const chatTitle = (msg.chat as any).title || (msg.chat as any).username || 'Unknown';
+    const displayName = msg.from.username ? `@${msg.from.username}` : `${msg.from.first_name || 'Unknown'}`;
+    const sentAtSec = typeof (msg as any).date === 'number' ? (msg as any).date : Math.floor(Date.now() / 1000);
+    const sentAt = new Date(sentAtSec * 1000).toLocaleString('ko-KR', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+
+    // 간단한 Markdown 특수문자 이스케이프 (본문 외 필드용)
+    const esc = (s: string) => s.replace(/([_*\[\]()])/g, '\\$1');
 
     logger.info('🧹 스팸 메시지 삭제', {
       chat: { id: msg.chat.id, title: (msg.chat as any).title, type: msg.chat.type },
@@ -208,7 +224,7 @@ async function deleteSpamMessage(msg: MetaMsg) {
     });
 
     if (env.ADMIN_GROUP_ID && isAdminGroup(env.ADMIN_GROUP_ID)) {
-      const logText = `🗑️ **스팸 삭제 로그**\n\n👤 사용자: @${msg.from.username || msg.from.first_name}\n💬 내용: ${text}\n🔢 메시지 ID: ${msg.message_id}\n🏷️ 우선순위: ${priority}`;
+      const logText = `🗑️ **스팸 삭제 로그**\n\n🏠 채팅방: ${esc(chatTitle)}\n🆔 채팅방 ID: ${msg.chat.id}\n👤 사용자: ${esc(displayName)}\n🆔 사용자 ID: ${msg.from.id}\n📅 날짜/시간: ${sentAt}\n\n💬 스팸 메시지:\n\n\`\`\`\n${text}\n\`\`\`\n`;
       try {
         await bot.sendMessage(env.ADMIN_GROUP_ID, logText, { parse_mode: 'Markdown' });
       } catch {}
