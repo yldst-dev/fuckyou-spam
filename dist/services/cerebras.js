@@ -18,7 +18,7 @@ async function classifySpam(messagePrompt) {
                 },
                 { role: 'user', content: messagePrompt },
             ],
-            model: env_1.env.CEREBRAS_MODEL || 'llama-4-scout-17b-16e-instruct',
+            model: env_1.env.CEREBRAS_MODEL,
             stream: false,
             max_completion_tokens: 2048,
             temperature: 0.2,

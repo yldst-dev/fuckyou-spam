@@ -16,7 +16,7 @@ export async function classifySpam(messagePrompt: string): Promise<Classificatio
         },
         { role: 'user', content: messagePrompt },
       ],
-      model: env.CEREBRAS_MODEL || 'llama-4-scout-17b-16e-instruct',
+      model: env.CEREBRAS_MODEL,
       stream: false,
       max_completion_tokens: 2048,
       temperature: 0.2,

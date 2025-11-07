@@ -15,7 +15,7 @@ function parseIntMaybe(value) {
 exports.env = {
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || '',
     CEREBRAS_API_KEY: process.env.CEREBRAS_API_KEY,
-    CEREBRAS_MODEL: process.env.CEREBRAS_MODEL || 'llama-4-scout-17b-16e-instruct',
+    CEREBRAS_MODEL: process.env.CEREBRAS_MODEL || 'gpt-oss-120b',
     BOT_USERNAME: process.env.BOT_USERNAME,
     ADMIN_USER_ID: parseIntMaybe(process.env.ADMIN_USER_ID),
     ADMIN_GROUP_ID: (() => {
