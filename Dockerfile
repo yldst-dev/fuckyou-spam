@@ -1,18 +1,21 @@
-FROM node:20-alpine AS builder
+FROM node:20.12-alpine AS builder
 
 WORKDIR /app
 
 RUN npm i -g npm@11.6.2
 
-COPY package*.json ./
-RUN npm ci
+# package.json만 복사하고 npm cache clean
+COPY package.json ./
+RUN npm cache clean --force && \
+    npm install --no-cache
 
+# 소스 코드 복사
 COPY . .
 
 # TypeScript 빌드
 RUN npm run build
 
-FROM node:20-alpine AS runtime
+FROM node:20.12-alpine AS runtime
 
 WORKDIR /app
 
