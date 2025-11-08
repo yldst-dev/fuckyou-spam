@@ -28,8 +28,9 @@ const fileLogFormat = winston.format.combine(
 const consoleLogFormat = winston.format.combine(
   koreanTimeFormat,
   winston.format.colorize({ all: true }),
-  winston.format.printf(({ timestamp, level, message, service }) => {
-    return `[${timestamp}] [${level}] [${service || 'app'}] ${message}`;
+  winston.format.printf(({ timestamp, level, message, service, ...meta }) => {
+    const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
+    return `[${timestamp}] [${level}] [${service || 'app'}] ${message}${metaStr}`;
   })
 );
 

@@ -2,14 +2,14 @@ import TelegramBot = require('node-telegram-bot-api');
 import { env } from '../config/env';
 import { logger } from '../logger';
 
-// Create bot instance with polling but catch errors
+// Create bot instance with polling (auto-start)
 export const bot = new TelegramBot(env.TELEGRAM_BOT_TOKEN, {
   polling: true
 });
 
 // Setup polling error handler immediately
 bot.on('polling_error', (error: any) => {
-  if (error.code === 'EFATAL' || error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
+  if (error.code === 'EFATAL' || error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND') {
     logger.warn('[WARN] 텔레그램 Polling 네트워크 오류 (자동 재시도)', {
       error: error.message,
       code: error.code,
@@ -27,9 +27,17 @@ bot.on('polling_error', (error: any) => {
 
 // Export bot promise that resolves when initialization is complete
 export const botPromise = new Promise<TelegramBot>((resolve, reject) => {
-  // Test bot connection
-  bot.getMe()
-    .then((botInfo) => {
+  const maxRetries = 5;
+  const retryDelay = 5000; // 5초
+  let attempt = 0;
+
+  async function initBot() {
+    attempt++;
+    logger.info(`[INFO] 봇 초기화 시도 ${attempt}/${maxRetries}`, { service: 'bot' });
+
+    try {
+      // Test bot connection
+      const botInfo = await bot.getMe();
       logger.info('[INFO] 봇 초기화 성공', {
         botName: botInfo.first_name,
         botUsername: botInfo.username,
@@ -37,11 +45,26 @@ export const botPromise = new Promise<TelegramBot>((resolve, reject) => {
         service: 'bot'
       });
       resolve(bot);
-    })
-    .catch((err: any) => {
-      logger.error('[ERROR] 봇 초기화 실패', { error: err.message, service: 'bot' });
-      reject(err);
-    });
+    } catch (err: any) {
+      logger.error(`[ERROR] 봇 초기화 실패 (${attempt}/${maxRetries})`, {
+        error: err.message,
+        code: err.code,
+        service: 'bot'
+      });
+
+      if (attempt < maxRetries) {
+        logger.info(`[INFO] ${retryDelay/1000}초 후 재시도...`, { service: 'bot' });
+        setTimeout(initBot, retryDelay);
+      } else {
+        logger.error('[ERROR] 최대 재시도 횟수 초과', { service: 'bot' });
+        reject(new Error(`봇 초기화 실패: ${err.message}`));
+      }
+    }
+  }
+
+  // Docker 환경에서는 초기화를 약간 지연시켜 네트워크가 준비될 시간을 줌
+  const initialDelay = process.env.NODE_ENV === 'production' ? 5000 : 0;
+  setTimeout(initBot, initialDelay);
 });
 
 const generalCommands = [
