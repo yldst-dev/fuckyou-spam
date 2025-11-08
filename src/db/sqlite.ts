@@ -13,14 +13,14 @@ function ensureDataDir() {
   try {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true, mode: 0o755 });
-      logger.info('📁 데이터 디렉토리 생성 완료', { dbDir: dir, service: 'db' });
+      logger.info('[INFO] 데이터 디렉토리 생성 완료', { dbDir: dir, service: 'db' });
     }
     const testFile = path.join(dir, '.write-test');
     fs.writeFileSync(testFile, 'test');
     fs.unlinkSync(testFile);
-    logger.info('✅ 데이터 디렉토리 쓰기 권한 확인 완료', { service: 'db' });
+    logger.info('[INFO] 데이터 디렉토리 쓰기 권한 확인 완료', { service: 'db' });
   } catch (error: any) {
-    logger.error('❌ 데이터 디렉토리 접근 실패', {
+    logger.error('[ERROR] 데이터 디렉토리 접근 실패', {
       error: error.message,
       dbDir: dir,
       service: 'db',
@@ -33,23 +33,23 @@ export function getDb(): sqlite3.Database {
   if (db) return db;
   ensureDataDir();
   const dbPath = path.resolve(paths.dbPath);
-  logger.info('🔄 SQLite 데이터베이스 초기화 시작', { dbPath, service: 'db' });
+  logger.info('[INFO] SQLite 데이터베이스 초기화 시작', { dbPath, service: 'db' });
 
   db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
     if (err) {
-      logger.error('❌ SQLite 데이터베이스 연결 실패', {
+      logger.error('[ERROR] SQLite 데이터베이스 연결 실패', {
         error: err.message,
         dbPath,
         service: 'db',
       });
       throw err;
     } else {
-      logger.info('✅ SQLite 데이터베이스 연결 성공', { dbPath, service: 'db' });
+      logger.info('[INFO] SQLite 데이터베이스 연결 성공', { dbPath, service: 'db' });
     }
   });
 
   db.on('error', (err) => {
-    logger.error('❌ SQLite 데이터베이스 런타임 오류', {
+    logger.error('[ERROR] SQLite 데이터베이스 런타임 오류', {
       error: err.message,
       service: 'db',
     });

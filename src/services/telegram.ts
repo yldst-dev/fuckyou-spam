@@ -2,7 +2,47 @@ import TelegramBot = require('node-telegram-bot-api');
 import { env } from '../config/env';
 import { logger } from '../logger';
 
-export const bot = new TelegramBot(env.TELEGRAM_BOT_TOKEN, { polling: true });
+// Create bot instance with polling but catch errors
+export const bot = new TelegramBot(env.TELEGRAM_BOT_TOKEN, {
+  polling: true
+});
+
+// Setup polling error handler immediately
+bot.on('polling_error', (error: any) => {
+  if (error.code === 'EFATAL' || error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
+    logger.warn('[WARN] 텔레그램 Polling 네트워크 오류 (자동 재시도)', {
+      error: error.message,
+      code: error.code,
+      service: 'bot'
+    });
+    // Don't exit - let node-telegram-bot-api handle retry
+  } else {
+    logger.error('[ERROR] 텔레그램 Polling 오류', {
+      error: error.message,
+      code: error.code,
+      service: 'bot'
+    });
+  }
+});
+
+// Export bot promise that resolves when initialization is complete
+export const botPromise = new Promise<TelegramBot>((resolve, reject) => {
+  // Test bot connection
+  bot.getMe()
+    .then((botInfo) => {
+      logger.info('[INFO] 봇 초기화 성공', {
+        botName: botInfo.first_name,
+        botUsername: botInfo.username,
+        botId: botInfo.id,
+        service: 'bot'
+      });
+      resolve(bot);
+    })
+    .catch((err: any) => {
+      logger.error('[ERROR] 봇 초기화 실패', { error: err.message, service: 'bot' });
+      reject(err);
+    });
+});
 
 const generalCommands = [
   { command: 'start', description: '봇 소개 및 시작' },
@@ -26,49 +66,71 @@ const adminCommands = [
 
 export async function syncBotCommands() {
   try {
-    logger.info('🔄 봇 명령어 동기화 시작...', { service: 'bot' });
+    const bot = await botPromise;
+    logger.info('[INFO] 봇 명령어 동기화 시작...', { service: 'bot' });
 
+    // First try without scope (default commands for all users)
     await bot.setMyCommands(generalCommands);
-    logger.info('✅ 일반 사용자 명령어 동기화 완료', {
+    logger.info('[INFO] 일반 사용자 명령어 동기화 완료', {
       commandCount: generalCommands.length,
       service: 'bot',
     });
 
+    // Set admin commands for admin user
     if (env.ADMIN_USER_ID) {
-      await bot.setMyCommands(adminCommands, {
-        scope: { type: 'chat', chat_id: env.ADMIN_USER_ID },
-      });
-      logger.info('✅ 관리자 개인 채팅 명령어 동기화 완료', {
-        adminUserId: env.ADMIN_USER_ID,
-        service: 'bot',
-      });
+      try {
+        await bot.setMyCommands(adminCommands, {
+          scope: { type: 'chat', chat_id: env.ADMIN_USER_ID },
+        });
+        logger.info('[INFO] 관리자 개인 채팅 명령어 동기화 완료', {
+          adminUserId: env.ADMIN_USER_ID,
+          service: 'bot',
+        });
+      } catch (adminError: any) {
+        logger.warn('[WARN] 관리자 개인 채팅 명령어 동기화 실패 (무시)', {
+          error: adminError.message,
+          adminUserId: env.ADMIN_USER_ID,
+          service: 'bot',
+        });
+      }
     }
 
+    // Set admin commands for admin group
     if (env.ADMIN_GROUP_ID) {
-      await bot.setMyCommands(adminCommands, {
-        scope: { type: 'chat', chat_id: env.ADMIN_GROUP_ID },
-      });
-      logger.info('✅ 관리자 그룹 명령어 동기화 완료', {
-        adminGroupId: env.ADMIN_GROUP_ID,
-        service: 'bot',
-      });
+      try {
+        await bot.setMyCommands(adminCommands, {
+          scope: { type: 'chat', chat_id: env.ADMIN_GROUP_ID },
+        });
+        logger.info('[INFO] 관리자 그룹 명령어 동기화 완료', {
+          adminGroupId: env.ADMIN_GROUP_ID,
+          service: 'bot',
+        });
+      } catch (adminError: any) {
+        logger.warn('[WARN] 관리자 그룹 명령어 동기화 실패 (무시)', {
+          error: adminError.message,
+          adminGroupId: env.ADMIN_GROUP_ID,
+          service: 'bot',
+        });
+      }
     }
   } catch (error: any) {
-    logger.error('❌ 봇 명령어 동기화 실패', { error: error.message, service: 'bot' });
+    logger.error('[ERROR] 봇 명령어 동기화 실패', { error: error.message, service: 'bot' });
+    throw error;
   }
 }
 
 export async function validateBotInitialization(): Promise<boolean> {
   try {
+    const bot = await botPromise;
     const botInfo = await bot.getMe();
-    logger.info('✅ 봇 정보 확인 완료', {
+    logger.info('[INFO] 봇 정보 확인 완료', {
       botName: botInfo.first_name,
       botUsername: botInfo.username,
       botId: botInfo.id,
       service: 'bot',
     });
     if (env.BOT_USERNAME && env.BOT_USERNAME !== botInfo.username) {
-      logger.warn('⚠️ 환경변수 BOT_USERNAME과 실제 봇 사용자명이 일치하지 않습니다', {
+      logger.warn('[WARN] 환경변수 BOT_USERNAME과 실제 봇 사용자명이 일치하지 않습니다', {
         envUsername: env.BOT_USERNAME,
         actualUsername: botInfo.username,
         service: 'bot',
@@ -76,7 +138,7 @@ export async function validateBotInitialization(): Promise<boolean> {
     }
     return true;
   } catch (error: any) {
-    logger.error('❌ 봇 초기화 검증 실패', { error: error.message, service: 'bot' });
+    logger.error('[ERROR] 봇 초기화 검증 실패', { error: error.message, code: error.code, service: 'bot' });
     return false;
   }
 }
